@@ -54,7 +54,7 @@ Current content: 362 entries.
 
 ## How the monthly feed works
 
-1. **`scan.py`** reads the discussions and issues of `freeplane/freeplane` updated in the month, through the GitHub GraphQL API. It keeps the posts created in that month (opening posts, comments and replies) that contain a Groovy-looking code block of four lines or more, or name a `.groovy` / `.addon.mm` file. This is a cheap filter, and it is meant to let too much through. For October 2026 it kept 7 posts out of 27 threads.
+1. **`scan.py`** reads the discussions and issues of `freeplane/freeplane` updated since the month began, through the GitHub GraphQL API. It keeps the posts created in that month (opening posts, comments and replies) that contain a Groovy-looking code block of four lines or more, or name a `.groovy` / `.addon.mm` file. This is a cheap filter, and it is meant to let too much through. For October 2026 it kept 7 posts out of 27 threads.
 2. **`classify.py`** first sets aside the posts that only link to a script file the catalog already has. The other posts go to Claude one at a time, with the thread's title and opening post for context, under the instructions in `tools/prompt.md`. The answer is constrained by a JSON schema: does the post share a script, plus a name, a description, the kind, the tags and the reason. A bug reproduction, a question or a one-liner answer is rejected.
 3. The accepted posts are merged into `catalog.json`. The report (`data/scans/<month>.md`) lists what was added, what was rejected and why, and what was already known. The workflow uses that report as the pull request description, so the review happens on the PR.
 

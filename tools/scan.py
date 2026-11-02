@@ -1,6 +1,6 @@
 """Collect posts from freeplane/freeplane that may share a script, for one month.
 
-Looks at discussions and issues updated in the window and keeps the posts
+Looks at the discussions and issues updated since the window opened and keeps the posts
 (opening post, comments, replies) *created* in it that carry code or a script
 file. No judgement happens here: that is classify.py's job. This step only
 narrows hundreds of posts down to the few worth reading.
@@ -23,28 +23,36 @@ REPO = "freeplane/freeplane"
 
 POST = "url createdAt body author { login } reactions { totalCount }"
 
+# Threads are walked newest-updated first through the repository's own
+# connections, not through the search API: with the Actions token, issue
+# search outside the token's repository returns nothing, and an `updated:`
+# range would also miss a thread with a post in the window and a later one.
 DISCUSSIONS = f"""
-query($q: String!, $after: String) {{
-  search(query: $q, type: DISCUSSION, first: 20, after: $after) {{
-    pageInfo {{ hasNextPage endCursor }}
-    nodes {{ ... on Discussion {{
-      number title {POST} upvoteCount category {{ name }}
-      comments(first: 100) {{ nodes {{
-        {POST} upvoteCount
-        replies(first: 50) {{ nodes {{ {POST} }} }}
-      }} }}
-    }} }}
+query($owner: String!, $name: String!, $after: String) {{
+  repository(owner: $owner, name: $name) {{
+    threads: discussions(first: 20, after: $after, orderBy: {{field: UPDATED_AT, direction: DESC}}) {{
+      pageInfo {{ hasNextPage endCursor }}
+      nodes {{
+        number title updatedAt {POST} upvoteCount
+        comments(first: 100) {{ nodes {{
+          {POST} upvoteCount
+          replies(first: 50) {{ nodes {{ {POST} }} }}
+        }} }}
+      }}
+    }}
   }}
 }}"""
 
 ISSUES = f"""
-query($q: String!, $after: String) {{
-  search(query: $q, type: ISSUE, first: 30, after: $after) {{
-    pageInfo {{ hasNextPage endCursor }}
-    nodes {{ ... on Issue {{
-      number title {POST}
-      comments(first: 100) {{ nodes {{ {POST} }} }}
-    }} }}
+query($owner: String!, $name: String!, $after: String) {{
+  repository(owner: $owner, name: $name) {{
+    threads: issues(first: 30, after: $after, orderBy: {{field: UPDATED_AT, direction: DESC}}) {{
+      pageInfo {{ hasNextPage endCursor }}
+      nodes {{
+        number title updatedAt {POST}
+        comments(first: 100) {{ nodes {{ {POST} }} }}
+      }}
+    }}
   }}
 }}"""
 
@@ -76,11 +84,16 @@ def in_window(ts: str, since: date, until: date) -> bool:
     return since.isoformat() <= ts[:10] <= until.isoformat()
 
 
-def search(query: str, gql: str, token: str):
+def threads(gql: str, since: date, token: str):
+    """Threads updated on or after `since`, newest first."""
+    owner, name = REPO.split("/")
     after = None
     while True:
-        data = lib.graphql(gql, {"q": query, "after": after}, token)["search"]
-        yield from (n for n in data["nodes"] if n)
+        data = lib.graphql(gql, {"owner": owner, "name": name, "after": after}, token)["repository"]["threads"]
+        for n in data["nodes"]:
+            if n["updatedAt"][:10] < since.isoformat():
+                return
+            yield n
         if not data["pageInfo"]["hasNextPage"]:
             return
         after = data["pageInfo"]["endCursor"]
@@ -108,15 +121,14 @@ def post_record(p: dict, kind: str, thread: dict, since: date, until: date) -> d
 
 
 def scan(since: date, until: date, token: str) -> list[dict]:
-    window = f"updated:{since.isoformat()}..{until.isoformat()}"
     out = []
-    for d in search(f"repo:{REPO} {window}", DISCUSSIONS, token):
+    for d in threads(DISCUSSIONS, since, token):
         out.append(post_record(d, "discussion", d, since, until))
         for cm in d["comments"]["nodes"]:
             out.append(post_record(cm, "discussion-comment", d, since, until))
             for r in cm["replies"]["nodes"]:
                 out.append(post_record(r, "discussion-reply", d, since, until))
-    for i in search(f"repo:{REPO} is:issue {window}", ISSUES, token):
+    for i in threads(ISSUES, since, token):
         out.append(post_record(i, "issue", i, since, until))
         for cm in i["comments"]["nodes"]:
             out.append(post_record(cm, "issue-comment", i, since, until))
