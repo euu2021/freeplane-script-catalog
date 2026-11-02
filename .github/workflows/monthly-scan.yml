@@ -19,6 +19,8 @@ permissions:
 jobs:
   scan:
     runs-on: ubuntu-latest
+    env:
+      HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -40,12 +42,28 @@ jobs:
           fi
           echo "LABEL=$(python -c "import json;print(json.load(open('work/candidates.json'))['label'])")" >> "$GITHUB_ENV"
 
+      # Without the ANTHROPIC_API_KEY secret (the proof-of-concept setup) the run
+      # stops here: it lists the candidates in the run summary and changes nothing.
+      - name: List candidates (no API key configured)
+        if: env.HAS_KEY != 'true'
+        run: |
+          python - >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          import json
+          d = json.load(open("work/candidates.json"))
+          print(f"## Candidates for {d['label']}\n")
+          print("No `ANTHROPIC_API_KEY` secret, so nothing was classified or added.\n")
+          for c in d["candidates"]:
+              print(f"- [{c['thread_title']}]({c['url']}) by {c['author']}: {'; '.join(c['reasons'])}")
+          EOF
+
       - name: Classify with Claude
+        if: env.HAS_KEY == 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python tools/classify.py work/candidates.json
 
       - name: Open pull request
+        if: env.HAS_KEY == 'true'
         uses: peter-evans/create-pull-request@v7
         with:
           branch: scan/${{ env.LABEL }}

@@ -73,9 +73,11 @@ python tools/classify.py work/candidates-2026-10.json     # needs ANTHROPIC_API_
 python -m http.server                      # then open http://localhost:8000
 ```
 
-`scan.py` needs a GitHub token: it uses `GITHUB_TOKEN` if set, otherwise `gh auth token`. In the workflow the default Actions token is enough, because the data is public. The workflow also needs one secret, `ANTHROPIC_API_KEY`.
+`scan.py` needs a GitHub token: it uses `GITHUB_TOKEN` if set, otherwise `gh auth token`. In the workflow the default Actions token is enough, because the data is public.
 
-To publish the page, enable GitHub Pages on the `main` branch, root folder.
+The AI step needs one secret, `ANTHROPIC_API_KEY`. **This repository deliberately has none**, since it is only a proof of concept. Without the secret the monthly run still scans, but it stops there: it lists the candidate posts in the run summary, and it does not change the catalog or open a pull request. To make the scan feed the catalog, add the secret and allow GitHub Actions to create pull requests (Settings → Actions → General).
+
+The page is served by GitHub Pages from the `main` branch, root folder.
 
 ## Known limits and next steps
 
