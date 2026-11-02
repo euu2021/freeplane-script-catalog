@@ -1,0 +1,57 @@
+# Once a month: find posts of the previous month that may share a script,
+# let Claude decide which really do, and open a pull request with the
+# additions. Nothing reaches the page until a human merges that PR.
+name: Monthly script scan
+
+on:
+  schedule:
+    - cron: "17 6 2 * *"   # 06:17 UTC on the 2nd of every month
+  workflow_dispatch:
+    inputs:
+      month:
+        description: "Month to scan (YYYY-MM). Empty = previous month."
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r tools/requirements.txt
+
+      - name: Collect candidate posts
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MONTH: ${{ inputs.month }}
+        run: |
+          if [ -n "$MONTH" ]; then
+            python tools/scan.py --month "$MONTH" --out work/candidates.json
+          else
+            python tools/scan.py --out work/candidates.json
+          fi
+          echo "LABEL=$(python -c "import json;print(json.load(open('work/candidates.json'))['label'])")" >> "$GITHUB_ENV"
+
+      - name: Classify with Claude
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python tools/classify.py work/candidates.json
+
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: scan/${{ env.LABEL }}
+          title: "Monthly script scan: ${{ env.LABEL }}"
+          commit-message: "Monthly script scan: ${{ env.LABEL }}"
+          body-path: data/scans/${{ env.LABEL }}.md
+          add-paths: |
+            data/catalog.json
+            data/scans/${{ env.LABEL }}.md
