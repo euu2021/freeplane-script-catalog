@@ -1,3 +1,5 @@
+# Copyright (C) 2026  euu2021 (Github)
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Seed the catalog from the sources listed in the Freeplane docs page
 "Finding useful scripts" (https://docs.freeplane.org/scripting/Finding_useful_scripts.html).
 

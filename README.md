@@ -86,3 +86,9 @@ The page is served by GitHub Pages from the `main` branch, root folder.
 - **Old forum.** The SourceForge forum and the years of GitHub discussions before the first scan are not covered. `scan.py --since 2020-01-01` would cover the GitHub part, at the cost of one classification per candidate.
 - **Popularity is a snapshot.** `reactions` is copied when an entry is added and never refreshed. A monthly refresh would make "most reactions" meaningful.
 - **Suggestions from users.** There is no form yet. An issue template ("suggest a script: link") could feed the same `classify.py`.
+
+## License
+
+The code of this repository (the page, the tools and the workflow) is licensed under the GNU General Public License, version 2 or (at your option) any later version, the same as Freeplane. See [LICENSE](LICENSE).
+
+The catalog only links to the scripts it lists. Each script keeps the license its author gave it, at the place it was published.

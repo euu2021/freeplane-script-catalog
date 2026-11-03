@@ -1,3 +1,5 @@
+# Copyright (C) 2026  euu2021 (Github)
+# SPDX-License-Identifier: GPL-2.0-or-later
 """AI step: read the candidates found by scan.py, decide which posts really
 share a script, describe and tag those, and merge them into the catalog.
 

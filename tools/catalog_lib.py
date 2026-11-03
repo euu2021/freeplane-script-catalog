@@ -1,3 +1,5 @@
+# Copyright (C) 2026  euu2021 (Github)
+# SPDX-License-Identifier: GPL-2.0-or-later
 """Shared helpers for the catalog tools: load/save, merge, tags, GitHub access."""
 from __future__ import annotations
 
